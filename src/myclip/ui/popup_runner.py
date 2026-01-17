@@ -280,12 +280,68 @@ def run_popup() -> None:
             time.sleep(0.1)
             previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
 
+    def on_clear_all(event) -> str:
+        search_var.set("")
+        return "break"
+
+    def on_delete_word(event) -> str:
+        # Delete from cursor to previous word boundary (Emacs: backward-kill-word)
+        entry = search_entry._entry
+        cursor = entry.index("insert")
+        text = search_var.get()
+        pos = cursor
+        while pos > 0 and text[pos - 1] == " ":
+            pos -= 1
+        while pos > 0 and text[pos - 1] != " ":
+            pos -= 1
+        entry.delete(pos, cursor)
+        return "break"
+
+    def on_kill_line(event) -> str:
+        # Delete from cursor to end of line (Emacs: kill-line)
+        entry = search_entry._entry
+        entry.delete("insert", "end")
+        return "break"
+
+    def on_kill_line_backward(event) -> str:
+        # Delete from cursor to beginning of line (Emacs: backward-kill-line)
+        entry = search_entry._entry
+        entry.delete(0, "insert")
+        return "break"
+
+    def on_move_beginning(event) -> str:
+        # Move to beginning of line (Emacs: move-beginning-of-line)
+        search_entry._entry.icursor(0)
+        return "break"
+
+    def on_move_end(event) -> str:
+        # Move to end of line (Emacs: move-end-of-line)
+        search_entry._entry.icursor("end")
+        return "break"
+
+    def on_delete_char(event) -> str:
+        # Delete character forward (Emacs: delete-char)
+        search_entry._entry.delete("insert")
+        return "break"
+
     # Bind events
     search_var.trace_add("write", on_search_changed)
     search_entry.bind("<Return>", on_enter)
     search_entry.bind("<Escape>", on_escape)
     search_entry.bind("<Up>", on_arrow_up)
     search_entry.bind("<Down>", on_arrow_down)
+    # macOS shortcuts
+    search_entry.bind("<Command-BackSpace>", on_clear_all)
+    search_entry.bind("<Option-BackSpace>", on_delete_word)
+    # Emacs bindings
+    search_entry.bind("<Control-w>", on_delete_word)
+    search_entry.bind("<Control-u>", on_kill_line_backward)
+    search_entry.bind("<Control-k>", on_kill_line)
+    search_entry.bind("<Control-a>", on_move_beginning)
+    search_entry.bind("<Control-e>", on_move_end)
+    search_entry.bind("<Control-d>", on_delete_char)
+    search_entry.bind("<Control-p>", on_arrow_up)
+    search_entry.bind("<Control-n>", on_arrow_down)
     root.bind("<Escape>", on_escape)
     root.protocol("WM_DELETE_WINDOW", root.quit)
 

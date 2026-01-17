@@ -7,28 +7,9 @@ import time
 import customtkinter as ctk
 import pyperclip
 from AppKit import NSApplicationActivateIgnoringOtherApps, NSWorkspace
-from rapidfuzz import fuzz, process
 
-from ..clipboard.history import delete_history_item, load_history_readonly
-from ..config import FUZZY_SCORE_THRESHOLD, ITEM_PREVIEW_LENGTH, POPUP_HEIGHT, POPUP_WIDTH
-
-
-def search_items(query: str, items: list[str]) -> list[str]:
-    """Search items using fuzzy matching."""
-    if not query or not query.strip():
-        return items
-
-    if not items:
-        return []
-
-    results = process.extract(
-        query,
-        items,
-        scorer=fuzz.partial_ratio,
-        limit=None,
-        score_cutoff=FUZZY_SCORE_THRESHOLD,
-    )
-    return [item for item, score, _ in results]
+from ..clipboard.history import delete_history_item, load_history_readonly, search_items
+from ..config import ITEM_PREVIEW_LENGTH, POPUP_HEIGHT, POPUP_WIDTH
 
 
 def truncate_text(text: str, max_len: int) -> str:
@@ -46,8 +27,8 @@ def run_popup() -> None:
     workspace = NSWorkspace.sharedWorkspace()
     previous_app = workspace.frontmostApplication()
 
-    # Load history from disk
-    all_items = load_history_readonly()
+    # Load only recent items
+    recent_items = load_history_readonly()[:10]
 
     # Set up CustomTkinter appearance (do this once)
     ctk.set_appearance_mode("system")
@@ -77,12 +58,64 @@ def run_popup() -> None:
     mono_font = ctk.CTkFont(family="monospace", size=12)
     search_font = ctk.CTkFont(size=14)
     delete_font = ctk.CTkFont(size=11)
+    tooltip_font = ctk.CTkFont(family="monospace", size=11)
 
     # State
     selected_index = [0]
     item_buttons: list[ctk.CTkButton] = []
     delete_buttons: list[ctk.CTkButton] = []
-    current_items: list[str] = all_items.copy()
+    current_items: list[str] = recent_items.copy()
+    tooltip: ctk.CTkToplevel | None = None
+
+    def show_preview(text: str, button: ctk.CTkButton | None = None) -> None:
+        """Show a preview panel with the full clipboard content."""
+        nonlocal tooltip
+        hide_preview()
+
+        # Limit preview length and lines
+        preview = text[:500] + ("..." if len(text) > 500 else "")
+        lines = preview.split("\n")[:15]
+        if len(text.split("\n")) > 15:
+            lines.append("...")
+        preview = "\n".join(lines)
+
+        tooltip = ctk.CTkToplevel(root)
+        tooltip.withdraw()  # Hide until positioned
+        tooltip.wm_overrideredirect(True)
+        tooltip.attributes("-topmost", True)
+
+        label = ctk.CTkLabel(
+            tooltip,
+            text=preview,
+            font=tooltip_font,
+            justify="left",
+            anchor="nw",
+            wraplength=350,
+            padx=8,
+            pady=6,
+        )
+        label.pack()
+
+        # Position preview to the right of the popup, aligned with selected item
+        root.update_idletasks()
+        popup_x = root.winfo_x()
+        popup_width = root.winfo_width()
+
+        # Get vertical position from the selected button
+        if button:
+            button_y = button.winfo_rooty()
+        else:
+            button_y = root.winfo_y()
+
+        tooltip.geometry(f"+{popup_x + popup_width + 10}+{button_y}")
+        tooltip.deiconify()  # Show after positioning
+
+    def hide_preview() -> None:
+        """Hide the preview panel."""
+        nonlocal tooltip
+        if tooltip:
+            tooltip.destroy()
+            tooltip = None
 
     # Search entry
     search_var = ctk.StringVar()
@@ -108,29 +141,34 @@ def run_popup() -> None:
             previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
 
     def update_selection_highlight() -> None:
-        """Update which item is highlighted."""
+        """Update which item is highlighted and show preview."""
         for i, button in enumerate(item_buttons):
             if i == selected_index[0]:
                 button.configure(fg_color=("gray70", "gray30"))
             else:
                 button.configure(fg_color="transparent")
+        # Show preview of selected item
+        if 0 <= selected_index[0] < len(current_items):
+            show_preview(current_items[selected_index[0]], item_buttons[selected_index[0]])
 
     def select_item(index: int) -> None:
         """Select and copy an item to clipboard."""
         if 0 <= index < len(current_items):
             pyperclip.copy(current_items[index])
+            hide_preview()
             root.quit()
 
     def delete_item(index: int) -> None:
         """Delete an item from history."""
-        nonlocal all_items
+        nonlocal recent_items
         if 0 <= index < len(current_items):
             item_to_delete = current_items[index]
             delete_history_item(item_to_delete)
-            if item_to_delete in all_items:
-                all_items.remove(item_to_delete)
+            if item_to_delete in recent_items:
+                recent_items.remove(item_to_delete)
+            # Refresh display
             query = search_var.get()
-            items = search_items(query, all_items)
+            items = search_items(query, recent_items) if query.strip() else recent_items
             selected_index[0] = min(selected_index[0], max(0, len(items) - 1))
             update_items_list(items)
             search_entry.focus_set()
@@ -157,7 +195,7 @@ def run_popup() -> None:
                 text=display_text,
                 anchor="w",
                 font=mono_font,
-                height=36,
+                height=20,
                 fg_color="transparent" if i != selected_index[0] else ("gray70", "gray30"),
                 hover_color=("gray75", "gray25"),
                 command=lambda idx=i: select_item(idx),
@@ -169,7 +207,7 @@ def run_popup() -> None:
                 items_frame,
                 text="X",
                 width=30,
-                height=36,
+                height=20,
                 font=delete_font,
                 fg_color="transparent",
                 hover_color=("red", "darkred"),
@@ -179,10 +217,14 @@ def run_popup() -> None:
             del_btn.grid(row=i, column=1, padx=(2, 2), pady=1)
             delete_buttons.append(del_btn)
 
+        # Show preview of selected item
+        if 0 <= selected_index[0] < len(current_items):
+            show_preview(current_items[selected_index[0]], item_buttons[selected_index[0]])
+
     def on_search_changed(*args) -> None:
         """Handle search text changes."""
         query = search_var.get()
-        items = search_items(query, all_items)
+        items = search_items(query, recent_items) if query.strip() else recent_items
         selected_index[0] = 0
         update_items_list(items)
 
@@ -190,6 +232,7 @@ def run_popup() -> None:
         select_item(selected_index[0])
 
     def on_escape(event) -> None:
+        hide_preview()
         root.quit()
 
     def on_arrow_up(event) -> str:
@@ -220,7 +263,7 @@ def run_popup() -> None:
     search_entry.focus_set()
 
     # Populate items after window is visible
-    root.after(10, lambda: update_items_list(all_items))
+    root.after(10, lambda: update_items_list(recent_items))
 
     # Run event loop
     root.mainloop()

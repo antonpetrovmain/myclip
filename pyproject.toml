@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myclip"
+version = "0.1.0"
+description = "A clipboard manager with system tray and global hotkey support"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "rumps>=0.4.0",
+    "pyperclip>=1.8.2",
+    "pyobjc-framework-Quartz>=10.0",
+    "customtkinter>=5.2.0",
+    "rapidfuzz>=3.5.0",
+    "Pillow>=10.0.0",
+]
+
+[project.scripts]
+myclip = "myclip.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

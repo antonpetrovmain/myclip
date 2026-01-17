@@ -17,7 +17,7 @@ class App:
     def __init__(self):
         self._history = ClipboardHistory()
         self._monitor = ClipboardMonitor(self._history)
-        self._hotkey_manager = HotkeyManager(self._on_hotkey_pressed)
+        self._hotkey_manager = HotkeyManager(self._show_popup)
         self._tray: TrayIcon | None = None
 
     def run(self) -> None:
@@ -35,22 +35,14 @@ class App:
         # This blocks - runs the macOS event loop
         self._tray.run()
 
-    def _on_hotkey_pressed(self) -> None:
-        """Handle global hotkey press."""
-        self._show_popup()
-
     def _show_popup(self) -> None:
         """Show the popup window in a subprocess to avoid GUI conflicts."""
-        # Launch popup as a separate process to avoid tkinter/rumps conflicts
         thread = threading.Thread(target=self._launch_popup_process, daemon=True)
         thread.start()
 
     def _launch_popup_process(self) -> None:
         """Launch the popup window as a subprocess."""
-        subprocess.run(
-            [sys.executable, "-m", "myclip.ui.popup_runner"],
-            cwd=None,
-        )
+        subprocess.run([sys.executable, "-m", "myclip.ui.popup_runner"])
 
     def _quit(self) -> None:
         """Quit the application."""

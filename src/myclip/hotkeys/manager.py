@@ -82,7 +82,6 @@ class HotkeyManager:
             print("  Add and enable your terminal app or Python")
             return
 
-
         # Create run loop source
         self._run_loop_source = Quartz.CFMachPortCreateRunLoopSource(
             None, self._tap, 0

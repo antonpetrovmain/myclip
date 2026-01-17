@@ -107,3 +107,17 @@ def load_history_readonly() -> list[str]:
     except Exception:
         pass
     return []
+
+
+def delete_history_item(item: str) -> bool:
+    """Delete an item from history file (for use in subprocess)."""
+    try:
+        if HISTORY_FILE.exists():
+            data = json.loads(HISTORY_FILE.read_text())
+            if isinstance(data, list) and item in data:
+                data.remove(item)
+                HISTORY_FILE.write_text(json.dumps(data))
+                return True
+    except Exception:
+        pass
+    return False

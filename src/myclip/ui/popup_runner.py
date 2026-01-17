@@ -9,7 +9,7 @@ import pyperclip
 from AppKit import NSApplicationActivateIgnoringOtherApps, NSWorkspace
 from rapidfuzz import fuzz, process
 
-from ..clipboard.history import load_history_readonly
+from ..clipboard.history import delete_history_item, load_history_readonly
 from ..config import FUZZY_SCORE_THRESHOLD, ITEM_PREVIEW_LENGTH, POPUP_HEIGHT, POPUP_WIDTH
 
 
@@ -82,6 +82,7 @@ def run_popup() -> None:
 
     # State
     selected_index = [0]
+    item_rows: list[ctk.CTkFrame] = []
     item_buttons: list[ctk.CTkButton] = []
     current_items: list[str] = all_items.copy()
 
@@ -123,21 +124,47 @@ def run_popup() -> None:
             pyperclip.copy(current_items[index])
             root.quit()
 
+    def delete_item(index: int) -> None:
+        """Delete an item from history."""
+        nonlocal all_items
+        if 0 <= index < len(current_items):
+            item_to_delete = current_items[index]
+            delete_history_item(item_to_delete)
+            # Update local list
+            if item_to_delete in all_items:
+                all_items.remove(item_to_delete)
+            # Refresh display
+            query = search_var.get()
+            items = search_items(query, all_items)
+            selected_index[0] = min(selected_index[0], max(0, len(items) - 1))
+            update_items_list(items)
+            # Return focus to search entry
+            search_entry.focus_set()
+
     def update_items_list(items: list[str]) -> None:
         """Update the displayed list of items."""
         nonlocal current_items
         current_items = items
 
-        # Clear existing buttons
-        for button in item_buttons:
-            button.destroy()
+        # Clear existing rows
+        for row in item_rows:
+            row.destroy()
+        item_rows.clear()
         item_buttons.clear()
 
-        # Create new buttons
+        # Create new rows
         for i, item in enumerate(items):
             display_text = truncate_text(item)
+
+            # Create row frame
+            row_frame = ctk.CTkFrame(items_frame, fg_color="transparent")
+            row_frame.grid(row=i, column=0, padx=2, pady=1, sticky="ew")
+            row_frame.grid_columnconfigure(0, weight=1)
+            item_rows.append(row_frame)
+
+            # Item button (text)
             button = ctk.CTkButton(
-                items_frame,
+                row_frame,
                 text=display_text,
                 anchor="w",
                 font=ctk.CTkFont(family="monospace", size=12),
@@ -146,8 +173,22 @@ def run_popup() -> None:
                 hover_color=("gray75", "gray25"),
                 command=lambda idx=i: select_item(idx),
             )
-            button.grid(row=i, column=0, padx=2, pady=1, sticky="ew")
+            button.grid(row=0, column=0, sticky="ew")
             item_buttons.append(button)
+
+            # Delete button
+            delete_btn = ctk.CTkButton(
+                row_frame,
+                text="X",
+                width=36,
+                height=36,
+                font=ctk.CTkFont(size=12, weight="bold"),
+                fg_color="transparent",
+                hover_color=("red", "darkred"),
+                text_color=("gray50", "gray60"),
+                command=lambda idx=i: delete_item(idx),
+            )
+            delete_btn.grid(row=0, column=1, padx=(2, 0))
 
     def on_search_changed(*args) -> None:
         """Handle search text changes."""

@@ -7,7 +7,9 @@ A lightweight clipboard manager for macOS that runs in the menu bar with global 
 - **Menu Bar App**: Runs quietly in the menu bar with a clipboard icon
 - **Global Hotkey**: Press `Cmd+Ctrl+P` to instantly open clipboard history
 - **Fuzzy Search**: Quickly find items with real-time fuzzy matching
-- **Keyboard Navigation**: Use arrow keys and Enter to select items
+- **Preview Panel**: See full content of selected item alongside the list
+- **Color-Coded Entries**: Visual distinction between clipboard items
+- **Keyboard Navigation**: Full support for arrow keys, Emacs bindings, and macOS shortcuts
 - **Persistent History**: Saves up to 100 clipboard items across restarts
 - **Focus Restoration**: Returns focus to your previous app after selection
 
@@ -57,6 +59,28 @@ Or use the launch script:
 3. Type to search or use arrow keys to navigate
 4. Press `Enter` or click to select an item
 5. The selected text is copied to your clipboard and the popup closes
+
+### Keyboard shortcuts
+
+**Navigation:**
+| Shortcut | Action |
+|----------|--------|
+| `↑` / `Ctrl+P` | Move up in list |
+| `↓` / `Ctrl+N` | Move down in list |
+| `Enter` | Select item |
+| `Escape` | Close popup |
+
+**Editing (search field):**
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Backspace` | Clear all text |
+| `Option+Backspace` | Delete word backward |
+| `Ctrl+W` | Delete word backward |
+| `Ctrl+U` | Delete to beginning |
+| `Ctrl+K` | Delete to end |
+| `Ctrl+A` | Move to beginning |
+| `Ctrl+E` | Move to end |
+| `Ctrl+D` | Delete character forward |
 
 ### Menu bar options
 

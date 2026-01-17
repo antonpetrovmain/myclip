@@ -158,7 +158,7 @@ def run_popup() -> None:
         font=search_font,
     )
     search_entry.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
-    search_entry._entry.configure(insertwidth=10, insertofftime=0)  # Block cursor
+    search_entry._entry.configure(insertwidth=2, insertofftime=0)  # Visible cursor
 
     items_frame = ctk.CTkScrollableFrame(root, corner_radius=0)
     items_frame.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="nsew")

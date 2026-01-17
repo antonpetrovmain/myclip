@@ -95,29 +95,36 @@ def run_popup() -> None:
     delete_buttons: list[ctk.CTkButton] = []
     current_items: list[str] = recent_items.copy()
     preview_window: ctk.CTkToplevel | None = None
+    preview_label: ctk.CTkLabel | None = None
 
     # --- Preview panel functions ---
 
     def show_preview(text: str, button: ctk.CTkButton | None = None) -> None:
-        nonlocal preview_window
-        hide_preview()
+        nonlocal preview_window, preview_label
 
-        preview_window = ctk.CTkToplevel(root)
-        preview_window.withdraw()
-        preview_window.wm_overrideredirect(True)
-        preview_window.attributes("-topmost", True)
+        # Create window once, reuse it
+        if preview_window is None or not preview_window.winfo_exists() or preview_label is None:
+            if preview_window and preview_window.winfo_exists():
+                preview_window.destroy()
+            preview_window = ctk.CTkToplevel(root)
+            preview_window.withdraw()
+            preview_window.wm_overrideredirect(True)
+            preview_window.attributes("-topmost", True)
 
-        label = ctk.CTkLabel(
-            preview_window,
-            text=format_preview(text),
-            font=preview_font,
-            justify="left",
-            anchor="nw",
-            wraplength=350,
-            padx=8,
-            pady=6,
-        )
-        label.pack()
+            preview_label = ctk.CTkLabel(
+                preview_window,
+                text="",
+                font=preview_font,
+                justify="left",
+                anchor="nw",
+                wraplength=350,
+                padx=8,
+                pady=6,
+            )
+            preview_label.pack()
+
+        # Update content
+        preview_label.configure(text=format_preview(text))
 
         # Position to the right of popup, aligned with selected item
         root.update_idletasks()
@@ -127,16 +134,17 @@ def run_popup() -> None:
 
         preview_window.geometry(f"+{popup_x + popup_width + 10}+{button_y}")
         preview_window.deiconify()
+        preview_window.lift()
 
     def hide_preview() -> None:
-        nonlocal preview_window
+        nonlocal preview_window, preview_label
         if preview_window:
             try:
                 preview_window.destroy()
             except Exception:
                 pass
             preview_window = None
-            root.update_idletasks()
+            preview_label = None
 
     # --- UI Components ---
 

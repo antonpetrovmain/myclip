@@ -31,12 +31,12 @@ def search_items(query: str, items: list[str]) -> list[str]:
     return [item for item, score, _ in results]
 
 
-def truncate_text(text: str) -> str:
+def truncate_text(text: str, max_len: int) -> str:
     """Truncate text for display, handling newlines."""
     text = text.replace("\n", " ").replace("\r", " ")
     text = " ".join(text.split())
-    if len(text) > ITEM_PREVIEW_LENGTH:
-        return text[: ITEM_PREVIEW_LENGTH - 3] + "..."
+    if len(text) > max_len:
+        return text[: max_len - 3] + "..."
     return text
 
 
@@ -49,13 +49,13 @@ def run_popup() -> None:
     # Load history from disk
     all_items = load_history_readonly()
 
-    # Set up CustomTkinter appearance
+    # Set up CustomTkinter appearance (do this once)
     ctk.set_appearance_mode("system")
     ctk.set_default_color_theme("blue")
 
     # Create root window (hidden initially to avoid position glitch)
     root = ctk.CTk()
-    root.withdraw()  # Hide window immediately
+    root.withdraw()
     root.title("MyClip - Clipboard History")
 
     # Calculate center position
@@ -64,50 +64,47 @@ def run_popup() -> None:
     screen_height = root.winfo_screenheight()
     x = (screen_width - POPUP_WIDTH) // 2
     y = (screen_height - POPUP_HEIGHT) // 3
-
-    # Set geometry with position before showing
     root.geometry(f"{POPUP_WIDTH}x{POPUP_HEIGHT}+{x}+{y}")
 
     # Make it float on top
     root.attributes("-topmost", True)
 
-    # Now show the window in the correct position
-    root.deiconify()
-    root.lift()
-    root.focus_force()
-
     # Configure grid
     root.grid_columnconfigure(0, weight=1)
     root.grid_rowconfigure(1, weight=1)
 
+    # Create fonts once (reuse for all buttons)
+    mono_font = ctk.CTkFont(family="monospace", size=12)
+    search_font = ctk.CTkFont(size=14)
+    delete_font = ctk.CTkFont(size=11)
+
     # State
     selected_index = [0]
-    item_rows: list[ctk.CTkFrame] = []
     item_buttons: list[ctk.CTkButton] = []
+    delete_buttons: list[ctk.CTkButton] = []
     current_items: list[str] = all_items.copy()
 
     # Search entry
     search_var = ctk.StringVar()
-
     search_entry = ctk.CTkEntry(
         root,
         textvariable=search_var,
         placeholder_text="Search clipboard history...",
         height=40,
-        font=ctk.CTkFont(size=14),
+        font=search_font,
     )
     search_entry.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
-    search_entry.focus_set()
 
     # Scrollable frame for items
     items_frame = ctk.CTkScrollableFrame(root)
     items_frame.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="nsew")
     items_frame.grid_columnconfigure(0, weight=1)
+    items_frame.grid_columnconfigure(1, weight=0)
 
     def restore_previous_app() -> None:
         """Restore focus to the previously active application."""
         if previous_app:
-            time.sleep(0.1)  # Small delay to ensure window is fully closed
+            time.sleep(0.1)
             previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
 
     def update_selection_highlight() -> None:
@@ -130,15 +127,12 @@ def run_popup() -> None:
         if 0 <= index < len(current_items):
             item_to_delete = current_items[index]
             delete_history_item(item_to_delete)
-            # Update local list
             if item_to_delete in all_items:
                 all_items.remove(item_to_delete)
-            # Refresh display
             query = search_var.get()
             items = search_items(query, all_items)
             selected_index[0] = min(selected_index[0], max(0, len(items) - 1))
             update_items_list(items)
-            # Return focus to search entry
             search_entry.focus_set()
 
     def update_items_list(items: list[str]) -> None:
@@ -146,49 +140,44 @@ def run_popup() -> None:
         nonlocal current_items
         current_items = items
 
-        # Clear existing rows
-        for row in item_rows:
-            row.destroy()
-        item_rows.clear()
+        # Clear existing buttons
+        for btn in item_buttons:
+            btn.destroy()
+        for btn in delete_buttons:
+            btn.destroy()
         item_buttons.clear()
+        delete_buttons.clear()
 
-        # Create new rows
+        # Create new buttons
         for i, item in enumerate(items):
-            display_text = truncate_text(item)
+            display_text = truncate_text(item, ITEM_PREVIEW_LENGTH)
 
-            # Create row frame
-            row_frame = ctk.CTkFrame(items_frame, fg_color="transparent")
-            row_frame.grid(row=i, column=0, padx=2, pady=1, sticky="ew")
-            row_frame.grid_columnconfigure(0, weight=1)
-            item_rows.append(row_frame)
-
-            # Item button (text)
             button = ctk.CTkButton(
-                row_frame,
+                items_frame,
                 text=display_text,
                 anchor="w",
-                font=ctk.CTkFont(family="monospace", size=12),
+                font=mono_font,
                 height=36,
                 fg_color="transparent" if i != selected_index[0] else ("gray70", "gray30"),
                 hover_color=("gray75", "gray25"),
                 command=lambda idx=i: select_item(idx),
             )
-            button.grid(row=0, column=0, sticky="ew")
+            button.grid(row=i, column=0, padx=(2, 0), pady=1, sticky="ew")
             item_buttons.append(button)
 
-            # Delete button
-            delete_btn = ctk.CTkButton(
-                row_frame,
+            del_btn = ctk.CTkButton(
+                items_frame,
                 text="X",
-                width=36,
+                width=30,
                 height=36,
-                font=ctk.CTkFont(size=12, weight="bold"),
+                font=delete_font,
                 fg_color="transparent",
                 hover_color=("red", "darkred"),
-                text_color=("gray50", "gray60"),
+                text_color=("gray50", "gray50"),
                 command=lambda idx=i: delete_item(idx),
             )
-            delete_btn.grid(row=0, column=1, padx=(2, 0))
+            del_btn.grid(row=i, column=1, padx=(2, 2), pady=1)
+            delete_buttons.append(del_btn)
 
     def on_search_changed(*args) -> None:
         """Handle search text changes."""
@@ -198,22 +187,18 @@ def run_popup() -> None:
         update_items_list(items)
 
     def on_enter(event) -> None:
-        """Handle Enter key."""
         select_item(selected_index[0])
 
     def on_escape(event) -> None:
-        """Handle Escape key."""
         root.quit()
 
     def on_arrow_up(event) -> str:
-        """Handle Up arrow."""
         if selected_index[0] > 0:
             selected_index[0] -= 1
             update_selection_highlight()
         return "break"
 
     def on_arrow_down(event) -> str:
-        """Handle Down arrow."""
         if selected_index[0] < len(item_buttons) - 1:
             selected_index[0] += 1
             update_selection_highlight()
@@ -228,8 +213,14 @@ def run_popup() -> None:
     root.bind("<Escape>", on_escape)
     root.protocol("WM_DELETE_WINDOW", root.quit)
 
-    # Initial population
-    update_items_list(all_items)
+    # Show window first, then populate (feels more responsive)
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+    search_entry.focus_set()
+
+    # Populate items after window is visible
+    root.after(10, lambda: update_items_list(all_items))
 
     # Run event loop
     root.mainloop()

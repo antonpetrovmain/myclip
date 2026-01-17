@@ -87,7 +87,7 @@ def run_popup() -> None:
     mono_font = ctk.CTkFont(family=FONT_FAMILY, size=12)
     search_font = ctk.CTkFont(family=FONT_FAMILY, size=14)
     delete_font = ctk.CTkFont(size=11)
-    preview_font = ctk.CTkFont(family=FONT_FAMILY, size=11)
+    preview_font = ctk.CTkFont(family=FONT_FAMILY, size=13)
 
     # State
     selected_index = [0]

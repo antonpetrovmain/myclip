@@ -345,12 +345,15 @@ def run_popup() -> None:
     root.bind("<Escape>", on_escape)
     root.protocol("WM_DELETE_WINDOW", root.quit)
 
-    # Show window and populate
+    # Populate items before showing window
+    update_items_list(recent_items)
+    root.update_idletasks()
+
+    # Show window and preview together
     root.deiconify()
     root.lift()
     root.focus_force()
     search_entry.focus_set()
-    root.after(10, lambda: update_items_list(recent_items))
 
     # Run event loop
     root.mainloop()

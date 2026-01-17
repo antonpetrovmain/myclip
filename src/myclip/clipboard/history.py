@@ -9,7 +9,25 @@ from pathlib import Path
 
 from rapidfuzz import fuzz, process
 
-from ..config import MAX_HISTORY_ITEMS, FUZZY_SCORE_THRESHOLD
+from ..config import FUZZY_SCORE_THRESHOLD, MAX_HISTORY_ITEMS
+
+
+def search_items(query: str, items: list[str]) -> list[str]:
+    """Search items using fuzzy matching. Returns matching items sorted by score."""
+    if not query or not query.strip():
+        return items
+
+    if not items:
+        return []
+
+    results = process.extract(
+        query,
+        items,
+        scorer=fuzz.partial_ratio,
+        limit=None,
+        score_cutoff=FUZZY_SCORE_THRESHOLD,
+    )
+    return [item for item, score, _ in results]
 
 # Storage location
 HISTORY_FILE = Path(os.path.expanduser("~/.myclip_history.json"))
@@ -67,24 +85,8 @@ class ClipboardHistory:
 
     def search(self, query: str) -> list[str]:
         """Search items using fuzzy matching. Returns matching items sorted by score."""
-        if not query or not query.strip():
-            return self.get_all()
-
         with self._lock:
-            if not self._items:
-                return []
-
-            # Use RapidFuzz for fuzzy matching
-            results = process.extract(
-                query,
-                self._items,
-                scorer=fuzz.partial_ratio,
-                limit=None,
-                score_cutoff=FUZZY_SCORE_THRESHOLD,
-            )
-
-            # Return items sorted by score (highest first)
-            return [item for item, score, _ in results]
+            return search_items(query, self._items.copy())
 
     def clear(self) -> None:
         """Clear all history."""

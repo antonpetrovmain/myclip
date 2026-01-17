@@ -11,83 +11,106 @@ from AppKit import NSApplicationActivateIgnoringOtherApps, NSWorkspace
 from ..clipboard.history import delete_history_item, load_history_readonly, search_items
 from ..config import ITEM_PREVIEW_LENGTH, POPUP_HEIGHT, POPUP_WIDTH
 
+# UI Constants
+FONT_FAMILY = "Menlo"
+ITEM_ROW_HEIGHT = 20
+SEARCH_HEIGHT = 28
+PREVIEW_MAX_CHARS = 500
+PREVIEW_MAX_LINES = 15
+
+# Color palette for cycling through entries (light mode, dark mode)
+COLOR_PALETTE = [
+    ("#e8f4f8", "#1a3a4a"),  # soft blue
+    ("#f0e8f8", "#2d1a4a"),  # soft purple
+    ("#e8f8e8", "#1a4a2d"),  # soft green
+    ("#f8f0e8", "#4a3a1a"),  # soft orange
+    ("#f8e8f0", "#4a1a3a"),  # soft pink
+]
+SELECTED_COLOR = ("gray70", "gray30")
+
 
 def truncate_text(text: str, max_len: int) -> str:
-    """Truncate text for display, handling newlines."""
-    text = text.replace("\n", " ").replace("\r", " ")
+    """Truncate text for display, collapsing whitespace."""
     text = " ".join(text.split())
     if len(text) > max_len:
         return text[: max_len - 3] + "..."
     return text
 
 
+def format_preview(text: str) -> str:
+    """Format text for preview panel, limiting length and lines."""
+    preview = text[:PREVIEW_MAX_CHARS]
+    if len(text) > PREVIEW_MAX_CHARS:
+        preview += "..."
+
+    lines = preview.split("\n")[:PREVIEW_MAX_LINES]
+    if len(text.split("\n")) > PREVIEW_MAX_LINES:
+        lines.append("...")
+
+    return "\n".join(lines)
+
+
 def run_popup() -> None:
     """Run the popup window."""
-    # Save the currently active application to restore focus later
     workspace = NSWorkspace.sharedWorkspace()
     previous_app = workspace.frontmostApplication()
 
-    # Load only recent items
     recent_items = load_history_readonly()[:10]
 
-    # Set up CustomTkinter appearance (do this once)
+    # Set up CustomTkinter
     ctk.set_appearance_mode("system")
     ctk.set_default_color_theme("blue")
 
-    # Create root window (hidden initially to avoid position glitch)
     root = ctk.CTk()
     root.withdraw()
     root.title("MyClip - Clipboard History")
 
-    # Calculate center position
+    # Calculate dynamic height based on number of entries
+    row_height = ITEM_ROW_HEIGHT + 2  # button height + padding
+    base_height = SEARCH_HEIGHT + 35  # search + margins
+    dynamic_height = min(POPUP_HEIGHT, base_height + len(recent_items) * row_height)
+
+    # Center window on screen
     root.update_idletasks()
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     x = (screen_width - POPUP_WIDTH) // 2
-    y = (screen_height - POPUP_HEIGHT) // 3
-    root.geometry(f"{POPUP_WIDTH}x{POPUP_HEIGHT}+{x}+{y}")
-
-    # Make it float on top
+    y = (screen_height - dynamic_height) // 3
+    root.geometry(f"{POPUP_WIDTH}x{dynamic_height}+{x}+{y}")
     root.attributes("-topmost", True)
 
     # Configure grid
     root.grid_columnconfigure(0, weight=1)
     root.grid_rowconfigure(1, weight=1)
 
-    # Create fonts once (reuse for all buttons)
-    mono_font = ctk.CTkFont(family="monospace", size=12)
-    search_font = ctk.CTkFont(size=14)
+    # Fonts
+    mono_font = ctk.CTkFont(family=FONT_FAMILY, size=12)
+    search_font = ctk.CTkFont(family=FONT_FAMILY, size=14)
     delete_font = ctk.CTkFont(size=11)
-    tooltip_font = ctk.CTkFont(family="monospace", size=11)
+    preview_font = ctk.CTkFont(family=FONT_FAMILY, size=11)
 
     # State
     selected_index = [0]
     item_buttons: list[ctk.CTkButton] = []
     delete_buttons: list[ctk.CTkButton] = []
     current_items: list[str] = recent_items.copy()
-    tooltip: ctk.CTkToplevel | None = None
+    preview_window: ctk.CTkToplevel | None = None
+
+    # --- Preview panel functions ---
 
     def show_preview(text: str, button: ctk.CTkButton | None = None) -> None:
-        """Show a preview panel with the full clipboard content."""
-        nonlocal tooltip
+        nonlocal preview_window
         hide_preview()
 
-        # Limit preview length and lines
-        preview = text[:500] + ("..." if len(text) > 500 else "")
-        lines = preview.split("\n")[:15]
-        if len(text.split("\n")) > 15:
-            lines.append("...")
-        preview = "\n".join(lines)
-
-        tooltip = ctk.CTkToplevel(root)
-        tooltip.withdraw()  # Hide until positioned
-        tooltip.wm_overrideredirect(True)
-        tooltip.attributes("-topmost", True)
+        preview_window = ctk.CTkToplevel(root)
+        preview_window.withdraw()
+        preview_window.wm_overrideredirect(True)
+        preview_window.attributes("-topmost", True)
 
         label = ctk.CTkLabel(
-            tooltip,
-            text=preview,
-            font=tooltip_font,
+            preview_window,
+            text=format_preview(text),
+            font=preview_font,
             justify="left",
             anchor="nw",
             wraplength=350,
@@ -96,77 +119,65 @@ def run_popup() -> None:
         )
         label.pack()
 
-        # Position preview to the right of the popup, aligned with selected item
+        # Position to the right of popup, aligned with selected item
         root.update_idletasks()
         popup_x = root.winfo_x()
         popup_width = root.winfo_width()
+        button_y = button.winfo_rooty() if button else root.winfo_y()
 
-        # Get vertical position from the selected button
-        if button:
-            button_y = button.winfo_rooty()
-        else:
-            button_y = root.winfo_y()
-
-        tooltip.geometry(f"+{popup_x + popup_width + 10}+{button_y}")
-        tooltip.deiconify()  # Show after positioning
+        preview_window.geometry(f"+{popup_x + popup_width + 10}+{button_y}")
+        preview_window.deiconify()
 
     def hide_preview() -> None:
-        """Hide the preview panel."""
-        nonlocal tooltip
-        if tooltip:
-            tooltip.destroy()
-            tooltip = None
+        nonlocal preview_window
+        if preview_window:
+            try:
+                preview_window.destroy()
+            except Exception:
+                pass
+            preview_window = None
+            root.update_idletasks()
 
-    # Search entry
+    # --- UI Components ---
+
     search_var = ctk.StringVar()
     search_entry = ctk.CTkEntry(
         root,
         textvariable=search_var,
         placeholder_text="Search clipboard history...",
-        height=40,
+        height=SEARCH_HEIGHT,
         font=search_font,
     )
     search_entry.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
+    search_entry._entry.configure(insertwidth=10, insertofftime=0)  # Block cursor
 
-    # Scrollable frame for items
-    items_frame = ctk.CTkScrollableFrame(root)
+    items_frame = ctk.CTkScrollableFrame(root, corner_radius=0)
     items_frame.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="nsew")
     items_frame.grid_columnconfigure(0, weight=1)
     items_frame.grid_columnconfigure(1, weight=0)
 
-    def restore_previous_app() -> None:
-        """Restore focus to the previously active application."""
-        if previous_app:
-            time.sleep(0.1)
-            previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    # --- Item management functions ---
 
     def update_selection_highlight() -> None:
-        """Update which item is highlighted and show preview."""
         for i, button in enumerate(item_buttons):
-            if i == selected_index[0]:
-                button.configure(fg_color=("gray70", "gray30"))
-            else:
-                button.configure(fg_color="transparent")
-        # Show preview of selected item
+            color = SELECTED_COLOR if i == selected_index[0] else COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            button.configure(fg_color=color)
         if 0 <= selected_index[0] < len(current_items):
             show_preview(current_items[selected_index[0]], item_buttons[selected_index[0]])
 
     def select_item(index: int) -> None:
-        """Select and copy an item to clipboard."""
         if 0 <= index < len(current_items):
             pyperclip.copy(current_items[index])
             hide_preview()
             root.quit()
 
     def delete_item(index: int) -> None:
-        """Delete an item from history."""
         nonlocal recent_items
         if 0 <= index < len(current_items):
-            item_to_delete = current_items[index]
-            delete_history_item(item_to_delete)
-            if item_to_delete in recent_items:
-                recent_items.remove(item_to_delete)
-            # Refresh display
+            item = current_items[index]
+            delete_history_item(item)
+            if item in recent_items:
+                recent_items.remove(item)
             query = search_var.get()
             items = search_items(query, recent_items) if query.strip() else recent_items
             selected_index[0] = min(selected_index[0], max(0, len(items) - 1))
@@ -174,11 +185,9 @@ def run_popup() -> None:
             search_entry.focus_set()
 
     def update_items_list(items: list[str]) -> None:
-        """Update the displayed list of items."""
         nonlocal current_items
         current_items = items
 
-        # Clear existing buttons
         for btn in item_buttons:
             btn.destroy()
         for btn in delete_buttons:
@@ -186,43 +195,44 @@ def run_popup() -> None:
         item_buttons.clear()
         delete_buttons.clear()
 
-        # Create new buttons
         for i, item in enumerate(items):
-            display_text = truncate_text(item, ITEM_PREVIEW_LENGTH)
+            color = SELECTED_COLOR if i == selected_index[0] else COLOR_PALETTE[i % len(COLOR_PALETTE)]
 
             button = ctk.CTkButton(
                 items_frame,
-                text=display_text,
+                text=truncate_text(item, ITEM_PREVIEW_LENGTH),
                 anchor="w",
                 font=mono_font,
-                height=20,
-                fg_color="transparent" if i != selected_index[0] else ("gray70", "gray30"),
+                height=ITEM_ROW_HEIGHT,
+                corner_radius=0,
+                fg_color=color,
                 hover_color=("gray75", "gray25"),
+                text_color=("gray10", "gray90"),
                 command=lambda idx=i: select_item(idx),
             )
-            button.grid(row=i, column=0, padx=(2, 0), pady=1, sticky="ew")
+            button.grid(row=i, column=0, padx=(4, 0), pady=1, sticky="ew")
             item_buttons.append(button)
 
             del_btn = ctk.CTkButton(
                 items_frame,
                 text="X",
                 width=30,
-                height=20,
+                height=ITEM_ROW_HEIGHT,
                 font=delete_font,
                 fg_color="transparent",
                 hover_color=("red", "darkred"),
                 text_color=("gray50", "gray50"),
                 command=lambda idx=i: delete_item(idx),
             )
-            del_btn.grid(row=i, column=1, padx=(2, 2), pady=1)
+            del_btn.grid(row=i, column=1, padx=2, pady=1)
             delete_buttons.append(del_btn)
 
-        # Show preview of selected item
         if 0 <= selected_index[0] < len(current_items):
             show_preview(current_items[selected_index[0]], item_buttons[selected_index[0]])
 
+    # --- Event handlers ---
+
     def on_search_changed(*args) -> None:
-        """Handle search text changes."""
         query = search_var.get()
         items = search_items(query, recent_items) if query.strip() else recent_items
         selected_index[0] = 0
@@ -247,6 +257,11 @@ def run_popup() -> None:
             update_selection_highlight()
         return "break"
 
+    def restore_previous_app() -> None:
+        if previous_app:
+            time.sleep(0.1)
+            previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+
     # Bind events
     search_var.trace_add("write", on_search_changed)
     search_entry.bind("<Return>", on_enter)
@@ -256,20 +271,16 @@ def run_popup() -> None:
     root.bind("<Escape>", on_escape)
     root.protocol("WM_DELETE_WINDOW", root.quit)
 
-    # Show window first, then populate (feels more responsive)
+    # Show window and populate
     root.deiconify()
     root.lift()
     root.focus_force()
     search_entry.focus_set()
-
-    # Populate items after window is visible
     root.after(10, lambda: update_items_list(recent_items))
 
     # Run event loop
     root.mainloop()
     root.destroy()
-
-    # Restore focus to the previous application
     restore_previous_app()
 
 

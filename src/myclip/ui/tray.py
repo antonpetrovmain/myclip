@@ -15,7 +15,7 @@ class TrayIcon(rumps.App):
         on_show_history: Callable[[], None],
         on_quit: Callable[[], None],
     ):
-        super().__init__("MyClip", "📋")
+        super().__init__("MyClip", "📋", quit_button=None)
         self._on_show_history = on_show_history
         self._on_quit = on_quit
 

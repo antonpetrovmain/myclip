@@ -24,6 +24,7 @@ class HotkeyManager:
         self._run_loop_source = None
         self._thread: threading.Thread | None = None
         self._running = False
+        self._hotkey_held = False  # Track if hotkey is currently held down
 
     def start(self) -> None:
         """Start listening for global hotkeys."""
@@ -47,30 +48,40 @@ class HotkeyManager:
         """Run the event tap in a background thread."""
         # Create callback
         def callback(proxy, event_type, event, refcon):
-            if event_type == Quartz.kCGEventKeyDown:
-                keycode = Quartz.CGEventGetIntegerValueField(
-                    event, Quartz.kCGKeyboardEventKeycode
-                )
-                flags = Quartz.CGEventGetFlags(event)
+            keycode = Quartz.CGEventGetIntegerValueField(
+                event, Quartz.kCGKeyboardEventKeycode
+            )
+            flags = Quartz.CGEventGetFlags(event)
 
-                # Check for Cmd+Ctrl+P
-                has_cmd = bool(flags & self.MOD_CMD)
-                has_ctrl = bool(flags & self.MOD_CTRL)
+            # Check for Cmd+Ctrl+P
+            has_cmd = bool(flags & self.MOD_CMD)
+            has_ctrl = bool(flags & self.MOD_CTRL)
+            is_hotkey = keycode == self.KEY_P and has_cmd and has_ctrl
 
-                if keycode == self.KEY_P and has_cmd and has_ctrl:
-                    # Trigger callback
+            if event_type == Quartz.kCGEventKeyDown and is_hotkey:
+                if not self._hotkey_held:
+                    # First press - trigger callback
+                    self._hotkey_held = True
                     self._on_hotkey()
-                    # Return None to consume the event (prevent it from reaching other apps)
-                    return None
+                # Consume event (both initial and repeats)
+                return None
+
+            if event_type == Quartz.kCGEventKeyUp and keycode == self.KEY_P:
+                # Reset held state when P is released
+                self._hotkey_held = False
 
             return event
 
-        # Create event tap
+        # Create event tap for both keyDown and keyUp
+        event_mask = (
+            Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown) |
+            Quartz.CGEventMaskBit(Quartz.kCGEventKeyUp)
+        )
         self._tap = Quartz.CGEventTapCreate(
             Quartz.kCGSessionEventTap,
             Quartz.kCGHeadInsertEventTap,
             Quartz.kCGEventTapOptionDefault,
-            Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown),
+            event_mask,
             callback,
             None,
         )

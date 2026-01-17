@@ -96,6 +96,7 @@ def run_popup() -> None:
     current_items: list[str] = recent_items.copy()
     preview_window: ctk.CTkToplevel | None = None
     preview_label: ctk.CTkLabel | None = None
+    search_after_id: str | None = None  # For debouncing search
 
     # --- Preview panel functions ---
 
@@ -241,10 +242,19 @@ def run_popup() -> None:
     # --- Event handlers ---
 
     def on_search_changed(*args) -> None:
-        query = search_var.get()
-        items = search_items(query, recent_items) if query.strip() else recent_items
-        selected_index[0] = 0
-        update_items_list(items)
+        nonlocal search_after_id
+        # Cancel any pending search
+        if search_after_id is not None:
+            root.after_cancel(search_after_id)
+        # Schedule new search with small delay (debounce)
+        def do_search():
+            nonlocal search_after_id
+            search_after_id = None
+            query = search_var.get()
+            items = search_items(query, recent_items) if query.strip() else recent_items
+            selected_index[0] = 0
+            update_items_list(items)
+        search_after_id = root.after(10, do_search)
 
     def on_enter(event) -> None:
         select_item(selected_index[0])

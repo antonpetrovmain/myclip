@@ -17,12 +17,18 @@ A lightweight clipboard manager for macOS that runs in the menu bar with global 
 
 ### Option 1: Download the App (Recommended)
 
-1. Download `MyClip.app` from the [Releases](https://github.com/antonpetrovmain/myclip/releases) page
-2. Move `MyClip.app` to your Applications folder
-3. Launch MyClip from Applications
-4. Grant Accessibility permissions when prompted:
+1. Download `MyClip-vX.X.X-macos.zip` from the [Releases](https://github.com/antonpetrovmain/myclip/releases) page
+2. Extract and move `MyClip.app` to your Applications folder
+3. Open Terminal and run these commands to allow the app to work properly:
+   ```bash
+   xattr -cr /Applications/MyClip.app
+   codesign --force --deep --sign - /Applications/MyClip.app
+   ```
+4. Launch MyClip from Applications
+5. Grant Accessibility permissions:
    - Open **System Settings > Privacy & Security > Accessibility**
-   - Enable **MyClip**
+   - Click **+** and add **MyClip** from Applications
+   - Quit and relaunch MyClip for permissions to take effect
 
 ### Option 2: Build from Source
 

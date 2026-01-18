@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -9,6 +10,11 @@ import threading
 from .clipboard import ClipboardHistory, ClipboardMonitor
 from .hotkeys import HotkeyManager
 from .ui import TrayIcon
+
+
+def is_frozen() -> bool:
+    """Check if running as a PyInstaller bundle."""
+    return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 
 class App:
@@ -50,9 +56,17 @@ class App:
     def _launch_popup_process(self) -> None:
         """Launch the popup window as a subprocess."""
         with self._popup_lock:
-            self._popup_process = subprocess.Popen(
-                [sys.executable, "-m", "myclip.ui.popup_runner"]
-            )
+            if is_frozen():
+                # Running as PyInstaller bundle - call self with --popup flag
+                self._popup_process = subprocess.Popen(
+                    [sys.executable, "--popup"],
+                    env={**os.environ, "MYCLIP_POPUP": "1"},
+                )
+            else:
+                # Running in development - use python -m
+                self._popup_process = subprocess.Popen(
+                    [sys.executable, "-m", "myclip.ui.popup_runner"]
+                )
         self._popup_process.wait()
 
     def _quit(self) -> None:

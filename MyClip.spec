@@ -4,6 +4,10 @@
 import sys
 from pathlib import Path
 
+# Add src to path for version import
+sys.path.insert(0, 'src')
+from myclip.version import __version__
+
 block_cipher = None
 
 # Get the customtkinter path for data files
@@ -81,8 +85,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'MyClip',
         'CFBundleDisplayName': 'MyClip',
-        'CFBundleVersion': '1.0.0',
-        'CFBundleShortVersionString': '1.0.0',
+        'CFBundleVersion': __version__,
+        'CFBundleShortVersionString': __version__,
         'LSMinimumSystemVersion': '10.15',
         'LSUIElement': True,  # Menu bar app (no dock icon)
         'NSHighResolutionCapable': True,

@@ -13,44 +13,51 @@ A lightweight clipboard manager for macOS that runs in the menu bar with global 
 - **Persistent History**: Saves up to 100 clipboard items across restarts
 - **Focus Restoration**: Returns focus to your previous app after selection
 
-## Requirements
-
-- macOS
-- Python 3.14+
-- Accessibility permissions (for global hotkey)
-
 ## Installation
+
+### Option 1: Download the App (Recommended)
+
+1. Download `MyClip.app` from the [Releases](https://github.com/antonpetrovmain/myclip/releases) page
+2. Move `MyClip.app` to your Applications folder
+3. Launch MyClip from Applications
+4. Grant Accessibility permissions when prompted:
+   - Open **System Settings > Privacy & Security > Accessibility**
+   - Enable **MyClip**
+
+### Option 2: Build from Source
 
 1. Clone the repository:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/antonpetrovmain/myclip.git
    cd myclip
    ```
 
 2. Create a virtual environment and install:
    ```bash
-   python3.14 -m venv venv
+   python3 -m venv venv
    source venv/bin/activate
    pip install -e .
+   pip install pyinstaller pillow
    ```
 
-3. Grant Accessibility permissions:
+3. Build the app:
+   ```bash
+   pyinstaller MyClip.spec --noconfirm
+   cp -r dist/MyClip.app /Applications/
+   ```
+
+4. Grant Accessibility permissions:
    - Open **System Settings > Privacy & Security > Accessibility**
-   - Add and enable your terminal app (e.g., Terminal, iTerm2)
+   - Add and enable **MyClip**
 
-## Usage
-
-### Start the app
+### Option 3: Run from Source (Development)
 
 ```bash
 source venv/bin/activate
 myclip
 ```
 
-Or use the launch script:
-```bash
-./run_myclip.sh
-```
+## Usage
 
 ### Using the clipboard manager
 
@@ -69,11 +76,11 @@ Or use the launch script:
 | `↓` / `Ctrl+N` | Move down in list |
 | `Enter` | Select item |
 | `Escape` | Close popup |
+| `Cmd+Delete` | Delete selected entry |
 
 **Editing (search field):**
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+Backspace` | Clear all text |
 | `Option+Backspace` | Delete word backward |
 | `Ctrl+W` | Delete word backward |
 | `Ctrl+U` | Delete to beginning |
@@ -84,7 +91,7 @@ Or use the launch script:
 
 ### Menu bar options
 
-Click the clipboard icon (📋) in the menu bar to:
+Click the clipboard icon in the menu bar to:
 - **Show History**: Open the clipboard history popup
 - **Quit**: Exit the application
 
@@ -94,8 +101,7 @@ To have MyClip start automatically when you log in:
 
 1. Open **System Settings > General > Login Items**
 2. Click **+** under "Open at Login"
-3. Press `Cmd+Shift+G` and enter the path to `run_myclip.sh`
-4. Add it
+3. Navigate to **Applications** and select **MyClip**
 
 ## Configuration
 
@@ -110,6 +116,11 @@ Settings are in `src/myclip/config.py`:
 ## Data Storage
 
 Clipboard history is stored in `~/.myclip_history.json`.
+
+## Requirements
+
+- macOS 10.15+
+- Accessibility permissions (for global hotkey)
 
 ## License
 

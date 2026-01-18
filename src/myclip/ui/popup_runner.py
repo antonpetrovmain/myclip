@@ -284,10 +284,6 @@ def run_popup() -> None:
             time.sleep(0.1)
             previous_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
 
-    def on_clear_all(event) -> str:
-        search_var.set("")
-        return "break"
-
     def on_delete_word(event) -> str:
         # Delete from cursor to previous word boundary (Emacs: backward-kill-word)
         entry = search_entry._entry
@@ -328,6 +324,11 @@ def run_popup() -> None:
         search_entry._entry.delete("insert")
         return "break"
 
+    def on_delete_entry(event) -> str:
+        # Delete the currently selected clipboard entry
+        delete_item(selected_index[0])
+        return "break"
+
     # Bind events
     search_var.trace_add("write", on_search_changed)
     search_entry.bind("<Return>", on_enter)
@@ -335,7 +336,7 @@ def run_popup() -> None:
     search_entry.bind("<Up>", on_arrow_up)
     search_entry.bind("<Down>", on_arrow_down)
     # macOS shortcuts
-    search_entry.bind("<Command-BackSpace>", on_clear_all)
+    search_entry.bind("<Command-BackSpace>", on_delete_entry)  # Delete selected entry
     search_entry.bind("<Option-BackSpace>", on_delete_word)
     # Emacs bindings
     search_entry.bind("<Control-w>", on_delete_word)

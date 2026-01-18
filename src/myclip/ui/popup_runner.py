@@ -63,7 +63,7 @@ def run_popup() -> None:
 
     root = ctk.CTk()
     root.withdraw()
-    root.title("MyClip - Clipboard History")
+    root.title("")  # Empty title for cleaner look
 
     # Calculate dynamic height based on number of entries
     row_height = ITEM_ROW_HEIGHT + 2  # button height + padding
@@ -224,16 +224,16 @@ def run_popup() -> None:
 
             del_btn = ctk.CTkButton(
                 items_frame,
-                text="X",
-                width=30,
+                text="×",
+                width=22,
                 height=ITEM_ROW_HEIGHT,
                 font=delete_font,
                 fg_color="transparent",
-                hover_color=("red", "darkred"),
-                text_color=("gray50", "gray50"),
+                hover_color=("gray85", "gray20"),
+                text_color=("gray70", "gray40"),
                 command=lambda idx=i: delete_item(idx),
             )
-            del_btn.grid(row=i, column=1, padx=2, pady=1)
+            del_btn.grid(row=i, column=1, padx=(0, 4), pady=1)
             delete_buttons.append(del_btn)
 
         if 0 <= selected_index[0] < len(current_items):

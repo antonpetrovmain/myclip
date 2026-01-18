@@ -26,7 +26,7 @@ COLOR_PALETTE = [
     ("#f8f0e8", "#4a3a1a"),  # soft orange
     ("#f8e8f0", "#4a1a3a"),  # soft pink
 ]
-SELECTED_COLOR = ("gray70", "gray30")
+SELECTED_COLOR = ("white", "gray95")  # High contrast for visibility
 
 
 def truncate_text(text: str, max_len: int) -> str:
@@ -70,12 +70,12 @@ def run_popup() -> None:
     base_height = SEARCH_HEIGHT + 35  # search + margins
     dynamic_height = min(POPUP_HEIGHT, base_height + len(recent_items) * row_height)
 
-    # Center window on screen
+    # Center window on screen, positioned higher to leave room for preview below
     root.update_idletasks()
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     x = (screen_width - POPUP_WIDTH) // 2
-    y = (screen_height - dynamic_height) // 3
+    y = (screen_height - dynamic_height) // 5
     root.geometry(f"{POPUP_WIDTH}x{dynamic_height}+{x}+{y}")
     root.attributes("-topmost", True)
 
@@ -118,7 +118,7 @@ def run_popup() -> None:
                 font=preview_font,
                 justify="left",
                 anchor="nw",
-                wraplength=350,
+                wraplength=POPUP_WIDTH - 30,  # Match popup width minus padding
                 padx=8,
                 pady=6,
             )
@@ -169,8 +169,10 @@ def run_popup() -> None:
 
     def update_selection_highlight() -> None:
         for i, button in enumerate(item_buttons):
-            color = SELECTED_COLOR if i == selected_index[0] else COLOR_PALETTE[i % len(COLOR_PALETTE)]
-            button.configure(fg_color=color)
+            is_selected = i == selected_index[0]
+            color = SELECTED_COLOR if is_selected else COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            text_color = ("black", "black") if is_selected else ("gray10", "gray90")
+            button.configure(fg_color=color, text_color=text_color)
         if 0 <= selected_index[0] < len(current_items):
             show_preview(current_items[selected_index[0]], item_buttons[selected_index[0]])
 
@@ -205,7 +207,9 @@ def run_popup() -> None:
         delete_buttons.clear()
 
         for i, item in enumerate(items):
-            color = SELECTED_COLOR if i == selected_index[0] else COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            is_selected = i == selected_index[0]
+            color = SELECTED_COLOR if is_selected else COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            text_color = ("black", "black") if is_selected else ("gray10", "gray90")
 
             button = ctk.CTkButton(
                 items_frame,
@@ -216,7 +220,7 @@ def run_popup() -> None:
                 corner_radius=0,
                 fg_color=color,
                 hover_color=("gray75", "gray25"),
-                text_color=("gray10", "gray90"),
+                text_color=text_color,
                 command=lambda idx=i: select_item(idx),
             )
             button.grid(row=i, column=0, padx=(4, 0), pady=1, sticky="ew")

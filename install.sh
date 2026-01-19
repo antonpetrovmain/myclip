@@ -14,9 +14,11 @@ echo "Installing $APP_NAME..."
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
-# Get latest release download URL
+# Get latest release info
 echo "Finding latest release..."
-RELEASE_URL=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep "browser_download_url.*macos-arm64.zip" | cut -d '"' -f 4)
+RELEASE_JSON=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+VERSION=$(echo "$RELEASE_JSON" | grep '"tag_name"' | cut -d '"' -f 4)
+RELEASE_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url.*macos-arm64.zip" | cut -d '"' -f 4)
 
 if [ -z "$RELEASE_URL" ]; then
     echo "Error: Could not find latest release"
@@ -24,7 +26,7 @@ if [ -z "$RELEASE_URL" ]; then
 fi
 
 # Download latest release
-echo "Downloading from $RELEASE_URL..."
+echo "Downloading $APP_NAME $VERSION..."
 curl -L -o myclip.zip "$RELEASE_URL"
 
 # Extract
@@ -49,7 +51,7 @@ xattr -cr "$INSTALL_DIR/$APP_NAME.app"
 rm -rf "$TEMP_DIR"
 
 echo ""
-echo "Done! MyClip installed to $INSTALL_DIR/$APP_NAME.app"
+echo "Done! $APP_NAME $VERSION installed to $INSTALL_DIR/$APP_NAME.app"
 echo ""
 echo "NOTE: You need to grant Accessibility permission:"
 echo "  System Settings > Privacy & Security > Accessibility > Add MyClip"

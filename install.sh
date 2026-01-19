@@ -16,7 +16,7 @@ cd "$TEMP_DIR"
 
 # Get latest release download URL
 echo "Finding latest release..."
-RELEASE_URL=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep "browser_download_url.*macos.zip" | cut -d '"' -f 4)
+RELEASE_URL=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep "browser_download_url.*macos-arm64.zip" | cut -d '"' -f 4)
 
 if [ -z "$RELEASE_URL" ]; then
     echo "Error: Could not find latest release"

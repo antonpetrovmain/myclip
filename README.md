@@ -32,7 +32,7 @@ After installation, grant Accessibility permissions:
 
 ### Option 2: Manual Download
 
-1. Download `MyClip-vX.X.X-macos.zip` from the [Releases](https://github.com/antonpetrovmain/myclip/releases) page
+1. Download `MyClip-macos-arm64.zip` from the [Releases](https://github.com/antonpetrovmain/myclip/releases) page
 2. Extract and move `MyClip.app` to your Applications folder
 3. Open Terminal and run:
    ```bash

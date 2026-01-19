@@ -2,19 +2,58 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
 import threading
+from pathlib import Path
 
 from .clipboard import ClipboardHistory, ClipboardMonitor
 from .hotkeys import HotkeyManager
 from .ui import TrayIcon
 
+LOG_PATH = Path.home() / "Library/Logs/MyClip.log"
+LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+    handlers=[
+        logging.FileHandler(LOG_PATH),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+log = logging.getLogger(__name__)
+
 
 def is_frozen() -> bool:
     """Check if running as a PyInstaller bundle."""
     return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
+def get_version() -> str:
+    """Get the app version from Info.plist (bundled) or package metadata."""
+    if is_frozen():
+        try:
+            app_path = Path(sys.executable).parent.parent
+            plist_path = app_path / "Info.plist"
+            if plist_path.exists():
+                result = subprocess.run(
+                    ["defaults", "read", str(plist_path), "CFBundleShortVersionString"],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    return result.stdout.strip()
+        except Exception:
+            pass
+    # Fallback to version module
+    try:
+        from .version import __version__
+        return __version__
+    except Exception:
+        return "dev"
 
 
 class App:
@@ -30,6 +69,8 @@ class App:
 
     def run(self) -> None:
         """Run the application."""
+        log.info(f"MyClip v{get_version()} starting...")
+
         # Start background services
         self._monitor.start()
         self._hotkey_manager.start()
@@ -38,6 +79,7 @@ class App:
         self._tray = TrayIcon(
             on_show_history=self._show_popup,
             on_quit=self._quit,
+            version=get_version(),
         )
 
         # This blocks - runs the macOS event loop

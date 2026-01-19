@@ -14,13 +14,18 @@ class TrayIcon(rumps.App):
         self,
         on_show_history: Callable[[], None],
         on_quit: Callable[[], None],
+        version: str = "dev",
     ):
         super().__init__("MyClip", "📋", quit_button=None)
         self._on_show_history = on_show_history
         self._on_quit = on_quit
 
         # Build menu
+        version_item = rumps.MenuItem(f"MyClip v{version}")
+        version_item.set_callback(None)
         self.menu = [
+            version_item,
+            None,  # Separator
             rumps.MenuItem("Show History (Cmd+Ctrl+P)", callback=self._handle_show_history),
             None,  # Separator
             rumps.MenuItem("Quit", callback=self._handle_quit),

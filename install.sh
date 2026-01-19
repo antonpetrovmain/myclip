@@ -10,6 +10,14 @@ REPO="antonpetrovmain/myclip"
 
 echo "Installing $APP_NAME..."
 
+# Check if we need sudo for /Applications
+if [ ! -w "$INSTALL_DIR" ] || [ -d "$INSTALL_DIR/$APP_NAME.app" -a ! -w "$INSTALL_DIR/$APP_NAME.app" ]; then
+    SUDO="sudo"
+    echo "Administrator privileges required for installation."
+else
+    SUDO=""
+fi
+
 # Create temp directory
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
@@ -36,16 +44,16 @@ unzip -q myclip.zip
 # Remove old version if exists
 if [ -d "$INSTALL_DIR/$APP_NAME.app" ]; then
     echo "Removing old version..."
-    rm -rf "$INSTALL_DIR/$APP_NAME.app"
+    $SUDO rm -rf "$INSTALL_DIR/$APP_NAME.app"
 fi
 
 # Move to Applications
 echo "Installing to $INSTALL_DIR..."
-mv "$APP_NAME.app" "$INSTALL_DIR/"
+$SUDO mv "$APP_NAME.app" "$INSTALL_DIR/"
 
 # Remove quarantine attribute (bypasses Gatekeeper)
 echo "Removing quarantine..."
-xattr -cr "$INSTALL_DIR/$APP_NAME.app"
+$SUDO xattr -cr "$INSTALL_DIR/$APP_NAME.app"
 
 # Cleanup
 rm -rf "$TEMP_DIR"

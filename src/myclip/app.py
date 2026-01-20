@@ -9,6 +9,7 @@ import sys
 import threading
 from pathlib import Path
 
+from . import user_config
 from .clipboard import ClipboardHistory, ClipboardMonitor
 from .hotkeys import HotkeyManager
 from .ui import TrayIcon
@@ -69,6 +70,7 @@ class App:
 
     def run(self) -> None:
         """Run the application."""
+        user_config.ensure_config_exists()
         log.info(f"MyClip v{get_version()} starting...")
 
         # Start background services

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 
 import rumps
+
+from .. import user_config
 
 
 class TrayIcon(rumps.App):
@@ -27,6 +30,7 @@ class TrayIcon(rumps.App):
             version_item,
             None,  # Separator
             rumps.MenuItem("Show History (Cmd+Ctrl+P)", callback=self._handle_show_history),
+            rumps.MenuItem("Edit Settings...", callback=self._handle_edit_settings),
             None,  # Separator
             rumps.MenuItem("Quit", callback=self._handle_quit),
         ]
@@ -34,6 +38,10 @@ class TrayIcon(rumps.App):
     def _handle_show_history(self, _) -> None:
         """Handle show history menu item click."""
         self._on_show_history()
+
+    def _handle_edit_settings(self, _) -> None:
+        """Handle edit settings menu item click."""
+        subprocess.run(["open", str(user_config.CONFIG_FILE)], check=False)
 
     def _handle_quit(self, _) -> None:
         """Handle quit menu item click."""

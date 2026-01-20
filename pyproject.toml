@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "myclip"
-version = "0.2.0"
+version = "0.2.1"
 description = "A clipboard manager with system tray and global hotkey support"
 readme = "README.md"
 requires-python = ">=3.14"
